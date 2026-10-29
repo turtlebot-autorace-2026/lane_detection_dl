@@ -56,7 +56,7 @@ class LaneDetection(Node):
         self.declare_parameter('device', '')          # '' = auto (cuda if available), 'cpu', '0'
         self.declare_parameter('show', True)          # cv2 debug window
         self.declare_parameter('process_hz', 15.0)
-        self.declare_parameter('publish_debug', False)  # BEV debug view on /lane_detection/debug/compressed
+        self.declare_parameter('publish_debug', True)  # BEV debug view on /lane_detection/debug/compressed
         self.declare_parameter('v_max', 0.12)                 # m/s
         self.declare_parameter('v_max_intersection', 0.08)    # m/s
         self.declare_parameter('k_lat', 1.0)                  # pure pursuit gain
