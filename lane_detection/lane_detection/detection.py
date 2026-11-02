@@ -57,15 +57,20 @@ class LaneDetection(Node):
         self.declare_parameter('show', True)          # cv2 debug window
         self.declare_parameter('process_hz', 15.0)
         self.declare_parameter('publish_debug', True)   # BEV debug view on /lane_detection/debug/compressed
-        self.declare_parameter('v_max', 0.12)                 # m/s
-        self.declare_parameter('v_max_intersection', 0.08)    # m/s
+        self.declare_parameter('v_max', 0.18)                 # m/s
+        self.declare_parameter('v_max_intersection', 0.12)    # m/s
+        self.declare_parameter('v_lost', 0.05)                # m/s, straight while no lane is seen
         self.declare_parameter('k_lat', 1.0)                  # pure pursuit gain
         self.declare_parameter('camera_height', 0.129)        # m, camera height above the road
         self.declare_parameter('roi_top_row', 220)            # ROI: BEV rows below this only (480 = bottom)
         self.declare_parameter('roi_half_width', 250)         # ROI: +-px around the robot center line
-        self.declare_parameter('max_ang', 0.8)                # rad/s
-        self.declare_parameter('lookahead_row', 415)          # BEV row of the steering target (480 = bottom)
-        self.declare_parameter('single_offset', 0.6)          # distance from the line when following one lane [x lane width]
+        self.declare_parameter('max_ang', 1.2)                # rad/s
+        self.declare_parameter('lookahead_row', 400)          # BEV row of the steering target (480 = bottom)
+        self.declare_parameter('single_offset', 0.5)          # distance from the line when following one lane [x lane width]
+        self.declare_parameter('lane_width', 355.0)           # yellow-center to white-center distance [BEV px]
+        self.declare_parameter('k_v', 0.6)                    # curve slow-down: v = v_max / (1 + k_v*|kappa|)
+        self.declare_parameter('ang_smooth', 0.6)             # weight of the new angular command (low-pass)
+        self.declare_parameter('v_single', 0.8)               # speed factor when only one lane is used
         self.conf = self.get_parameter('conf').value
         self.imgsz = self.get_parameter('imgsz').value
         self.device = self.get_parameter('device').value or None
@@ -130,10 +135,15 @@ class LaneDetection(Node):
     def lane_config(self):
         return LaneConfig(v_max=self.get_parameter('v_max').value,
                           v_max_intersection=self.get_parameter('v_max_intersection').value,
+                          v_lost=self.get_parameter('v_lost').value,
                           k_lat=self.get_parameter('k_lat').value,
                           max_ang=self.get_parameter('max_ang').value,
                           lookahead_row=self.get_parameter('lookahead_row').value,
                           single_offset=self.get_parameter('single_offset').value,
+                          lane_width=self.get_parameter('lane_width').value,
+                          k_v=self.get_parameter('k_v').value,
+                          ang_smooth=self.get_parameter('ang_smooth').value,
+                          v_single=self.get_parameter('v_single').value,
                           camera_height=self.get_parameter('camera_height').value,
                           roi_top_row=self.get_parameter('roi_top_row').value,
                           roi_half_width=self.get_parameter('roi_half_width').value)

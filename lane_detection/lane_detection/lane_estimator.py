@@ -36,25 +36,26 @@ class LaneConfig:
     def __init__(self, **kw):
         # geometry
         self.robot_x = 326.0          # BEV x of the robot center line
-        self.lane_width = 320.0       # yellow-center to white-center distance [px]
+        self.lane_width = 355.0       # yellow-center to white-center distance [px] (286 mm road)
         self.roi_top_row = 220        # ROI: rows below this only (~31 cm ahead of the camera)
         self.roi_half_width = 250     # ROI: +-px around the robot center line (own lane lines at ~+-160 px)
         self.row_step = 10            # rows sampled for the lane curves
         self.min_points = 5           # sampled rows needed to accept a lane
-        self.single_offset = 0.6      # distance from the line when only one lane is seen [x lane width]
+        self.single_offset = 0.5      # distance from the line when only one lane is seen [x lane width]
         # control (pure pursuit)
-        self.lookahead_row = 415      # target point row (~15 cm ahead of the camera)
+        self.lookahead_row = 400      # target point row (~16 cm ahead of the camera)
         self.camera_height = 0.129    # m, sets the BEV metric scale
         self.camera_ahead_of_axle = 0.076   # m
         self.k_lat = 1.0              # pure pursuit gain
         self.kappa_max = 7.0          # 1/m
-        self.v_max = 0.12             # m/s
-        self.v_max_intersection = 0.08
+        self.v_max = 0.18             # m/s
+        self.v_max_intersection = 0.12
         self.ang_scale_intersection = 0.7
-        self.k_v = 0.35               # v = v_max / (1 + k_v*|kappa|): slow down in curves
+        self.k_v = 0.6                # v = v_max / (1 + k_v*|kappa|): slow down in curves
         self.v_single = 0.8           # speed factor when only one lane is used
-        self.max_ang = 0.8            # rad/s
-        self.ang_smooth = 0.4         # weight of the new angular command (low-pass)
+        self.v_lost = 0.05            # m/s, drive straight at this speed while no lane is seen
+        self.max_ang = 1.2            # rad/s
+        self.ang_smooth = 0.6         # weight of the new angular command (low-pass)
         for k, v in kw.items():
             setattr(self, k, v)
         self.rows = np.arange(BEV_H - 10, self.roi_top_row - 1, -self.row_step)   # bottom -> top
@@ -133,10 +134,10 @@ class LaneEstimator:
         elif w is not None:
             center, mode = _offset_curve(w, rows, -single), 'white_only'
         else:
-            # no lane -> stop
+            # no lane -> keep going straight slowly
             self.center, self.prev_ang = None, 0.0
-            self.debug = dict(mode='lost')
-            return 0.0, 0.0
+            self.debug = dict(mode='lost', v=cfg.v_lost, w=0.0)
+            return float(cfg.v_lost), 0.0
         self.center = center
 
         # 4. pure pursuit on the target point (rotation center = wheel axle)
